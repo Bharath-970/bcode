@@ -1,9 +1,8 @@
 from pathlib import Path
-import pytest
 from bcode.detectors.scope import ScopeDetector
 from bcode.detectors.base import Severity
 from bcode.git import DiffResult, ChangedFile
-from bcode.context import AuditContext, BcodeConfig
+from bcode.context import AuditContext
 
 
 def _make_ctx(paths: list[str], task: str, commits: int = 0) -> AuditContext:

@@ -1,13 +1,12 @@
 from __future__ import annotations
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from bcode.context import is_protected
 from bcode.detectors.base import Finding, Severity
-from bcode.git import ChangedFile
 
 if TYPE_CHECKING:
     from bcode.context import AuditContext
+    from bcode.git import ChangedFile
 
 STOPWORDS = frozenset({
     "fix", "add", "the", "a", "an", "in", "on", "for", "to",
@@ -29,7 +28,6 @@ def _is_in_scope_by_name(changed: ChangedFile, tokens: set[str]) -> bool:
 
 
 def _is_in_scope(changed: ChangedFile, tokens: set[str], in_scope_dirs: set[str]) -> bool:
-    """Check if file is in scope by name or by being in a directory with in-scope files."""
     return _is_in_scope_by_name(changed, tokens) or str(changed.path.parent) in in_scope_dirs
 
 
@@ -52,12 +50,9 @@ class ScopeDetector:
         if not tokens:
             return findings
 
-        # Find files that match tokens by name
         in_scope_by_name = [f for f in ctx.diff.files if _is_in_scope_by_name(f, tokens)]
-        # Find directories containing in-scope files
         in_scope_dirs = {str(f.path.parent) for f in in_scope_by_name}
 
-        # Out of scope = files not matching by name or directory
         out_of_scope = [f for f in ctx.diff.files if not _is_in_scope(f, tokens, in_scope_dirs)]
         total = len(ctx.diff.files)
         if total == 0:
