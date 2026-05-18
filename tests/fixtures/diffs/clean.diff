@@ -2,7 +2,7 @@ diff --git a/src/auth.py b/src/auth.py
 index abc1234..def5678 100644
 --- a/src/auth.py
 +++ b/src/auth.py
-@@ -10,3 +10,4 @@
+@@ -10,2 +10,3 @@
  def login(user):
 +    user.last_login = datetime.now()
      return user
