@@ -1,0 +1,6 @@
+{
+  "found": true,
+  "commands": [
+    {"command": "ruff check .", "stdout": "", "timestamp": 1716000010.0}
+  ]
+}

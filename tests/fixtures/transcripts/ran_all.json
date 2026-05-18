@@ -1,0 +1,8 @@
+{
+  "found": true,
+  "commands": [
+    {"command": "pytest tests/", "stdout": "5 passed in 0.8s", "timestamp": 1716000000.0},
+    {"command": "ruff check .", "stdout": "", "timestamp": 1716000010.0},
+    {"command": "mypy src/", "stdout": "Success: no issues found", "timestamp": 1716000020.0}
+  ]
+}
