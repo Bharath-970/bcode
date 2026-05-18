@@ -2,7 +2,7 @@
 from __future__ import annotations
 import re
 import subprocess
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 
@@ -31,6 +31,7 @@ def _parse_diff_text(
     removed: list[str] = []
 
     def _flush() -> None:
+        # Must be called BEFORE reassigning current_path/added/removed
         if current_path is not None:
             count = (commit_counts or {}).get(current_path, 0)
             files.append(ChangedFile(
@@ -42,7 +43,7 @@ def _parse_diff_text(
 
     for line in text.splitlines():
         if line.startswith("diff --git "):
-            _flush()
+            _flush()  # flush before reassigning state
             m = re.match(r"diff --git a/(.*) b/(.*)", line)
             current_path = m.group(2) if m else None
             added, removed = [], []
@@ -56,6 +57,7 @@ def _parse_diff_text(
 
 
 def parse_unstaged(repo_root: Path) -> DiffResult:
+    """Return diff of working tree against HEAD. Returns empty result if HEAD does not exist."""
     result = subprocess.run(
         ["git", "diff", "HEAD"],
         capture_output=True, text=True, cwd=repo_root, check=False,
@@ -64,6 +66,10 @@ def parse_unstaged(repo_root: Path) -> DiffResult:
 
 
 def parse_commits(repo_root: Path, n: int) -> DiffResult:
+    """Return diff across last n commits with per-file commit counts. n must be >= 1."""
+    if n < 1:
+        raise ValueError(f"n must be >= 1, got {n}")
+
     diff_out = subprocess.run(
         ["git", "diff", f"HEAD~{n}", "HEAD"],
         capture_output=True, text=True, cwd=repo_root, check=False,
