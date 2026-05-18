@@ -1,6 +1,7 @@
 from __future__ import annotations
 import json
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
 
@@ -40,7 +41,6 @@ def _cwd_to_hash(cwd: Path) -> str:
 
 
 def _parse_timestamp(ts: str) -> float:
-    from datetime import datetime
     try:
         dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
         return dt.timestamp()
