@@ -1,7 +1,6 @@
 from pathlib import Path
 import json as json_module
-import pytest
-from bcode.transcript import load_fixture, TranscriptResult, CommandRun
+from bcode.transcript import load_fixture, TranscriptResult
 
 FIXTURES = Path(__file__).parent / "fixtures" / "transcripts"
 
