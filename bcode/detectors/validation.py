@@ -1,14 +1,14 @@
-# bcode/detectors/validation.py
 from __future__ import annotations
 import subprocess
-from pathlib import Path
 from typing import TYPE_CHECKING
 
-from bcode.detectors.base import Detector, Finding, Severity
+from bcode.detectors.base import Finding, Severity
 from bcode.git import DiffResult
 
 if TYPE_CHECKING:
     from bcode.context import AuditContext
+
+_DETECTOR = "validation"
 
 RUNNERS: dict[str, list[str]] = {
     "test":      ["pytest", "jest", "vitest", "go test", "cargo test"],
@@ -56,25 +56,24 @@ class ValidationDetector:
 
         if ctx.transcript is None or not ctx.transcript.found:
             findings.append(Finding(
-                detector="validation",
+                detector=_DETECTOR,
                 severity=Severity.INFO,
                 message="No transcript found — validation status unknown",
             ))
             return findings
 
         relevant = infer_relevant_categories(ctx.diff)
-        commands_run = [c.command for c in ctx.transcript.commands]
 
         for category in sorted(relevant):
             if category == "typecheck" and not ctx.config.run_typecheck:
                 ran = any(
                     command_matches_runner(cmd, runner)
-                    for cmd in commands_run
+                    for cmd in (c.command for c in ctx.transcript.commands)
                     for runner in RUNNERS["typecheck"]
                 )
                 if not ran:
                     findings.append(Finding(
-                        detector="validation",
+                        detector=_DETECTOR,
                         severity=Severity.INFO,
                         message="typecheck not in session — run with --typecheck to verify",
                     ))
@@ -88,7 +87,7 @@ class ValidationDetector:
 
             if not matched_commands:
                 findings.append(Finding(
-                    detector="validation",
+                    detector=_DETECTOR,
                     severity=Severity.FAIL,
                     message=f"no {category} runner found in session",
                 ))
@@ -96,7 +95,7 @@ class ValidationDetector:
                 for cmd in matched_commands:
                     if _stdout_suggests_failure(cmd.stdout):
                         findings.append(Finding(
-                            detector="validation",
+                            detector=_DETECTOR,
                             severity=Severity.WARN,
                             message=f"{cmd.command.split()[0]} ran — stdout suggests failures (verify manually)",
                         ))
@@ -121,18 +120,18 @@ def _run_typecheck_subprocess(ctx: "AuditContext") -> list[Finding]:
             ["mypy", "--no-error-summary", *py_files],
             capture_output=True, text=True, cwd=ctx.repo_root, check=False,
         )
-        if result.returncode != 0 and result.stdout.strip():
+        if result.returncode == 127:
             findings.append(Finding(
-                detector="validation",
+                detector=_DETECTOR,
+                severity=Severity.INFO,
+                message="mypy not installed — skipping typecheck",
+            ))
+        elif result.returncode != 0 and result.stdout.strip():
+            findings.append(Finding(
+                detector=_DETECTOR,
                 severity=Severity.FAIL,
                 message=f"mypy found type errors: {result.stdout.splitlines()[0]}",
                 critical=True,
-            ))
-        elif result.returncode == 127:  # command not found
-            findings.append(Finding(
-                detector="validation",
-                severity=Severity.INFO,
-                message="mypy not installed — skipping typecheck",
             ))
 
     if ts_files:
@@ -140,18 +139,18 @@ def _run_typecheck_subprocess(ctx: "AuditContext") -> list[Finding]:
             ["tsc", "--noEmit", "--strict", *ts_files],
             capture_output=True, text=True, cwd=ctx.repo_root, check=False,
         )
-        if result.returncode != 0 and result.stdout.strip():
+        if result.returncode == 127:
             findings.append(Finding(
-                detector="validation",
+                detector=_DETECTOR,
+                severity=Severity.INFO,
+                message="tsc not installed — skipping typecheck",
+            ))
+        elif result.returncode != 0 and result.stdout.strip():
+            findings.append(Finding(
+                detector=_DETECTOR,
                 severity=Severity.FAIL,
                 message=f"tsc found type errors: {result.stdout.splitlines()[0]}",
                 critical=True,
-            ))
-        elif result.returncode == 127:
-            findings.append(Finding(
-                detector="validation",
-                severity=Severity.INFO,
-                message="tsc not installed — skipping typecheck",
             ))
 
     return findings

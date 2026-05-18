@@ -1,11 +1,9 @@
-# tests/test_validation.py
 from pathlib import Path
-import pytest
 from bcode.detectors.validation import ValidationDetector, command_matches_runner
 from bcode.detectors.base import Severity
 from bcode.git import DiffResult, ChangedFile
 from bcode.transcript import TranscriptResult, CommandRun
-from bcode.context import AuditContext, BcodeConfig
+from bcode.context import AuditContext
 
 
 def _py_ctx(commands: list[CommandRun] | None, found: bool = True) -> AuditContext:
@@ -24,12 +22,10 @@ def test_all_relevant_runners_found():
     commands = [
         CommandRun("pytest tests/", "5 passed", 0.0),
         CommandRun("ruff check .", "", 0.0),
-        CommandRun("mypy src/", "Success: no issues found", 0.0),
     ]
     ctx = _py_ctx(commands)
     findings = ValidationDetector().run(ctx)
-    fail_findings = [f for f in findings if f.severity == Severity.FAIL]
-    assert fail_findings == []
+    assert all(f.severity != Severity.FAIL for f in findings)
 
 
 def test_missing_test_runner_is_fail():
@@ -91,5 +87,4 @@ def test_typecheck_absent_is_info_when_flag_not_set():
     ctx = _py_ctx(commands)
     findings = ValidationDetector().run(ctx)
     info_findings = [f for f in findings if f.severity == Severity.INFO]
-    assert any("typecheck" in f.message.lower() or "--typecheck" in f.message
-               for f in info_findings)
+    assert any("--typecheck" in f.message for f in info_findings)
