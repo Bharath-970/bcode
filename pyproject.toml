@@ -1,11 +1,32 @@
 [project]
 name = "bcode"
 version = "0.1.0"
+description = "AI agent reliability scanner — detects hallucinated imports, missing validation, scope drift, and break-fix loops in Claude Code sessions"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "Bharath", email = "tchalla970@gmail.com" }]
 requires-python = ">=3.10"
+keywords = ["ai", "agent", "claude", "audit", "reliability", "llm"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Quality Assurance",
+]
 dependencies = [
     "click>=8.0",
     "tomllib; python_version < '3.11'",
 ]
+
+[project.urls]
+Homepage = "https://github.com/Bharath-970/bcode"
+Repository = "https://github.com/Bharath-970/bcode"
+"Bug Tracker" = "https://github.com/Bharath-970/bcode/issues"
 
 [project.optional-dependencies]
 dev = ["pytest", "pytest-cov"]
