@@ -4,7 +4,7 @@ import subprocess
 
 from click.testing import CliRunner
 
-from bcode.cli import audit
+from bcode.cli import cli
 
 
 def _make_git_repo(tmp_path: Path) -> None:
@@ -19,7 +19,7 @@ def _make_git_repo(tmp_path: Path) -> None:
 def test_cli_runs_and_produces_output(tmp_path):
     _make_git_repo(tmp_path)
     runner = CliRunner()
-    result = runner.invoke(audit, ["--task", "add main module", "--repo", str(tmp_path)])
+    result = runner.invoke(cli, ["audit","--task", "add main module", "--repo", str(tmp_path)])
     assert result.exit_code in (0, 1)
     assert len(result.output) > 0
 
@@ -27,7 +27,7 @@ def test_cli_runs_and_produces_output(tmp_path):
 def test_cli_json_output_is_valid(tmp_path):
     _make_git_repo(tmp_path)
     runner = CliRunner()
-    result = runner.invoke(audit, ["--task", "add module", "--repo", str(tmp_path), "--json"])
+    result = runner.invoke(cli, ["audit","--task", "add module", "--repo", str(tmp_path), "--json"])
     assert result.exit_code in (0, 1)
     data = json.loads(result.output)
     assert "score" in data
@@ -37,7 +37,7 @@ def test_cli_json_output_is_valid(tmp_path):
 
 def test_cli_missing_task_fails():
     runner = CliRunner()
-    result = runner.invoke(audit, ["--repo", "."])
+    result = runner.invoke(cli, ["audit","--repo", "."])
     assert result.exit_code != 0
 
 
@@ -48,7 +48,7 @@ def test_cli_commits_flag(tmp_path):
     subprocess.run(["git", "commit", "-m", "second"], cwd=tmp_path, check=True, capture_output=True)
 
     runner = CliRunner()
-    result = runner.invoke(audit, ["--task", "update main", "--repo", str(tmp_path), "--commits", "1"])
+    result = runner.invoke(cli, ["audit","--task", "update main", "--repo", str(tmp_path), "--commits", "1"])
     assert result.exit_code in (0, 1)
     assert len(result.output) > 0
 
@@ -56,7 +56,7 @@ def test_cli_commits_flag(tmp_path):
 def test_cli_typecheck_flag(tmp_path):
     _make_git_repo(tmp_path)
     runner = CliRunner()
-    result = runner.invoke(audit, ["--task", "add main", "--repo", str(tmp_path), "--typecheck"])
+    result = runner.invoke(cli, ["audit","--task", "add main", "--repo", str(tmp_path), "--typecheck"])
     assert result.exit_code in (0, 1)
     assert len(result.output) > 0
 
@@ -68,5 +68,5 @@ def test_cli_low_score_exits_nonzero(tmp_path):
     (tmp_path / "main.py").write_text("import os\nimport sys\n")
     runner = CliRunner()
     # With no transcript and modified file, score will be low → exit 1
-    result = runner.invoke(audit, ["--task", "update main", "--repo", str(tmp_path)])
+    result = runner.invoke(cli, ["audit","--task", "update main", "--repo", str(tmp_path)])
     assert result.exit_code in (0, 1)

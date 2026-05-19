@@ -11,7 +11,12 @@ from bcode.report import render
 from bcode.transcript import load_transcript
 
 
-@click.command()
+@click.group()
+def cli() -> None:
+    pass
+
+
+@cli.command()
 @click.option("--task", "-t", required=True, help="Declared task description")
 @click.option("--commits", "-c", default=0, type=click.IntRange(min=0),
               help="Audit last N commits (0 = unstaged diff)")
@@ -45,4 +50,4 @@ def audit(task: str, commits: int, typecheck: bool, repo: str, output_json: bool
 
 
 def main() -> None:
-    audit()
+    cli()
