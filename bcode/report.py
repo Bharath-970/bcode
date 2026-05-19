@@ -2,11 +2,11 @@ from __future__ import annotations
 import dataclasses
 import json
 import sys
+import time
 import click
 from bcode.audit import AuditResult
 from bcode.detectors.base import Severity
 
-# ASCII art logo — gradient applied per line at render time
 _LOGO = [
     "  _     ___  ___  ___  ___ ",
     " | |__ / __||   \\| __||   \\",
@@ -14,7 +14,18 @@ _LOGO = [
     " |_.__/\\___||___/|___||___/ ",
     "   AI Agent Reliability Scanner",
 ]
-_LOGO_COLORS = ["bright_magenta", "magenta", "bright_cyan", "cyan", "bright_blue"]
+
+# Color sweep cycles — each frame shifts the gradient down one line
+_SWEEP = [
+    ["white",          "bright_magenta", "magenta",      "bright_cyan",   "cyan"],
+    ["bright_magenta", "magenta",        "bright_cyan",  "cyan",          "bright_blue"],
+    ["magenta",        "bright_cyan",    "cyan",         "bright_blue",   "blue"],
+    ["bright_cyan",    "cyan",           "bright_blue",  "blue",          "bright_magenta"],
+    ["cyan",           "bright_blue",    "blue",         "bright_magenta","magenta"],
+    ["bright_blue",    "blue",           "bright_magenta","magenta",      "bright_cyan"],
+    # settle on final
+    ["bright_magenta", "magenta",        "bright_cyan",  "cyan",          "bright_blue"],
+]
 
 _DETECTORS = [
     ("imports",    "IMPORTS    "),
@@ -80,9 +91,27 @@ def _detector_summary(findings: list) -> str:
 
 
 def _render_logo() -> None:
+    is_tty = sys.stdout.isatty()
     click.echo()
-    for line, color in zip(_LOGO, _LOGO_COLORS):
-        click.echo("  " + click.style(line, fg=color, bold=True))
+
+    if is_tty:
+        # Print first frame
+        for line, color in zip(_LOGO, _SWEEP[0]):
+            sys.stdout.write("  " + click.style(line, fg=color, bold=True) + "\n")
+        sys.stdout.flush()
+
+        # Sweep through frames
+        for frame in _SWEEP[1:]:
+            time.sleep(0.07)
+            # Move cursor back up
+            sys.stdout.write(f"\033[{len(_LOGO)}A")
+            for line, color in zip(_LOGO, frame):
+                sys.stdout.write("  " + click.style(line, fg=color, bold=True) + "\n")
+            sys.stdout.flush()
+    else:
+        for line, color in zip(_LOGO, _SWEEP[-1]):
+            click.echo("  " + click.style(line, fg=color, bold=True))
+
     click.echo()
 
 
