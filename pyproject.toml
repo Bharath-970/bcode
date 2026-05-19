@@ -1,5 +1,5 @@
 [project]
-name = "bcode"
+name = "bcode-audit"
 version = "0.1.0"
 description = "AI agent reliability scanner — detects hallucinated imports, missing validation, scope drift, and break-fix loops in Claude Code sessions"
 readme = "README.md"
@@ -37,6 +37,9 @@ bcode = "bcode.cli:main"
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["bcode"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
