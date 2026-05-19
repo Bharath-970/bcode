@@ -2,8 +2,26 @@ from __future__ import annotations
 import dataclasses
 import json
 import sys
+import click
 from bcode.audit import AuditResult
 from bcode.detectors.base import Severity
+
+# ASCII art logo — gradient applied per line at render time
+_LOGO = [
+    "  _     ___  ___  ___  ___ ",
+    " | |__ / __||   \\| __||   \\",
+    " | '_ \\ (__ | |) | _| | |) |",
+    " |_.__/\\___||___/|___||___/ ",
+    "   AI Agent Reliability Scanner",
+]
+_LOGO_COLORS = ["bright_magenta", "magenta", "bright_cyan", "cyan", "bright_blue"]
+
+_DETECTORS = [
+    ("imports",    "IMPORTS    "),
+    ("validation", "VALIDATION "),
+    ("scope",      "SCOPE      "),
+    ("breakfix",   "BREAK-FIX  "),
+]
 
 
 def _supports_unicode() -> bool:
@@ -11,65 +29,127 @@ def _supports_unicode() -> bool:
     return enc.lower() in ("utf-8", "utf8")
 
 
-def _get_symbols() -> dict[str, str]:
-    if _supports_unicode():
-        return {
-            "pass": "✓", "fail": "✗", "warn": "⚠",
-            "red": "🔴", "yellow": "🟡", "green": "🟢",
-        }
-    return {
-        "pass": "OK", "fail": "XX", "warn": "!",
-        "red": "[RED]", "yellow": "[YELLOW]", "green": "[GREEN]",
-    }
+def _c(text: str, color: str, bold: bool = False) -> str:
+    return click.style(text, fg=color, bold=bold)
 
 
-def _score_band(score: int, sym: dict[str, str]) -> str:
+def _score_bar(score: int) -> str:
+    filled = score // 5
+    empty = 20 - filled
     if score >= 80:
-        return f"{sym['green']} LOW RISK"
+        color = "bright_green"
+    elif score >= 50:
+        color = "bright_yellow"
+    else:
+        color = "bright_red"
+    bar = _c("█" * filled, color) + _c("░" * empty, "bright_black")
+    return bar
+
+
+def _score_label(score: int) -> str:
+    if score >= 80:
+        return _c(f"{score}/100  LOW RISK", "bright_green", bold=True)
     if score >= 50:
-        return f"{sym['yellow']} REVIEW RECOMMENDED"
-    return f"{sym['red']} HIGH RISK"
+        return _c(f"{score}/100  REVIEW", "bright_yellow", bold=True)
+    return _c(f"{score}/100  HIGH RISK", "bright_red", bold=True)
 
 
-def _render_terminal(result: AuditResult) -> None:
-    sym = _get_symbols()
-    sep = "─" * 45
+def _finding_icon(sev: Severity) -> str:
+    if sev == Severity.FAIL:
+        return _c("✗", "bright_red", bold=True)
+    if sev == Severity.WARN:
+        return _c("⚠", "bright_yellow", bold=True)
+    return _c("~", "bright_black")
 
-    print("bcode audit — session report")
-    print(sep)
-    print(f"Task          : {result.task}")
-    print(f"Files changed : {result.files_changed}")
-    status = "found" if result.transcript_found else "not found (validation partial)"
-    print(f"Transcript    : {status}")
-    print()
+
+def _detector_summary(findings: list) -> str:
+    if not findings:
+        return _c("✓  clean", "bright_green")
+    fails  = [f for f in findings if f.severity == Severity.FAIL]
+    warns  = [f for f in findings if f.severity == Severity.WARN]
+    infos  = [f for f in findings if f.severity == Severity.INFO]
+    if fails:
+        msgs = "  ·  ".join(f.message for f in fails[:2])
+        suffix = f"  (+{len(fails)-2} more)" if len(fails) > 2 else ""
+        return _c(f"✗  {msgs}{suffix}", "bright_red")
+    if warns:
+        msgs = "  ·  ".join(f.message for f in warns[:2])
+        suffix = f"  (+{len(warns)-2} more)" if len(warns) > 2 else ""
+        return _c(f"⚠  {msgs}{suffix}", "bright_yellow")
+    return _c(f"~  {infos[0].message}", "bright_black")
+
+
+def _render_logo() -> None:
+    click.echo()
+    for line, color in zip(_LOGO, _LOGO_COLORS):
+        click.echo("  " + click.style(line, fg=color, bold=True))
+    click.echo()
+
+
+def _sep(char: str = "━", width: int = 52) -> str:
+    return _c(char * width, "bright_black")
+
+
+def _render_terminal(result: AuditResult, verbose: bool = False) -> None:
+    uni = _supports_unicode()
+
+    _render_logo()
+
+    # Meta row
+    transcript_status = (
+        _c("transcript ✓", "bright_green") if result.transcript_found
+        else _c("no transcript", "bright_black")
+    )
+    click.echo(
+        f"  {_c('task', 'bright_black')}   {_c(result.task, 'white', bold=True)}\n"
+        f"  {_c('files', 'bright_black')}  {_c(str(result.files_changed), 'white')} changed"
+        f"  ·  {transcript_status}"
+    )
+    click.echo()
+    click.echo("  " + _sep())
+    click.echo()
 
     by_detector: dict[str, list] = {}
     for f in result.findings:
         by_detector.setdefault(f.detector, []).append(f)
 
-    _render_section("HALLUCINATION DETECTION", by_detector.get("imports", []), sym)
-    _render_section("VALIDATION ENFORCEMENT", by_detector.get("validation", []), sym)
-    _render_section("SCOPE ANALYSIS [informational]", by_detector.get("scope", []), sym)
-    _render_section("BREAK-FIX LOOPS", by_detector.get("breakfix", []), sym)
+    # Summary table
+    for key, label in _DETECTORS:
+        findings = by_detector.get(key, [])
+        summary = _detector_summary(findings)
+        click.echo(f"  {_c(label, 'white', bold=True)}  {summary}")
 
-    print(sep)
-    band = _score_band(result.score, sym)
-    print(f"Reliability Score : {result.score} / 100   {band}")
-    print(f"Recommendation    : {result.recommendation}")
-    print(sep)
+        if verbose and findings:
+            for f in findings:
+                icon = _finding_icon(f.severity)
+                loc = _c(f"  {f.file}", "bright_black") if f.file else ""
+                click.echo(f"    {icon}  {f.message}{loc}")
+        click.echo()
 
+    click.echo("  " + _sep())
+    click.echo()
 
-def _render_section(title: str, findings: list, sym: dict[str, str]) -> None:
-    print(title)
-    if not findings:
-        print(f"  {sym['pass']} No issues detected")
-    for f in findings:
-        icon = sym["fail"] if f.severity == Severity.FAIL else (
-            sym["warn"] if f.severity == Severity.WARN else "~"
-        )
-        loc = f" — {f.file}" if f.file else ""
-        print(f"  {icon} {f.message}{loc}")
-    print()
+    # Score bar
+    bar = _score_bar(result.score)
+    label = _score_label(result.score)
+    click.echo(f"  {_c('score', 'bright_black')}  {bar}  {label}")
+    click.echo()
+
+    # Recommendation
+    if result.score < 50:
+        rec_color = "bright_red"
+        prefix = "✗"
+    elif result.score < 80:
+        rec_color = "bright_yellow"
+        prefix = "⚠"
+    else:
+        rec_color = "bright_green"
+        prefix = "✓"
+
+    click.echo(f"  {_c(prefix, rec_color, bold=True)}  {_c(result.recommendation, rec_color)}")
+    click.echo()
+    click.echo("  " + _sep())
+    click.echo()
 
 
 def _render_json(result: AuditResult) -> None:
@@ -78,8 +158,8 @@ def _render_json(result: AuditResult) -> None:
     print(json.dumps(data, indent=2, default=str))
 
 
-def render(result: AuditResult, output_json: bool = False) -> None:
+def render(result: AuditResult, output_json: bool = False, verbose: bool = False) -> None:
     if output_json:
         _render_json(result)
     else:
-        _render_terminal(result)
+        _render_terminal(result, verbose=verbose)

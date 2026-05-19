@@ -26,7 +26,9 @@ def cli() -> None:
               help="Repo root (default: cwd)")
 @click.option("--json", "output_json", is_flag=True, default=False,
               help="Emit JSON instead of terminal output")
-def audit(task: str, commits: int, typecheck: bool, repo: str, output_json: bool) -> None:
+@click.option("--verbose", "-v", is_flag=True, default=False,
+              help="Show individual findings with file paths")
+def audit(task: str, commits: int, typecheck: bool, repo: str, output_json: bool, verbose: bool) -> None:
     repo_root = Path(repo).resolve()
     config = load_config(repo_root)
     config.run_typecheck = typecheck
@@ -43,7 +45,7 @@ def audit(task: str, commits: int, typecheck: bool, repo: str, output_json: bool
     )
 
     result = audit_module.run(ctx)
-    render(result, output_json=output_json)
+    render(result, output_json=output_json, verbose=verbose)
 
     if result.score < 50:
         sys.exit(1)
