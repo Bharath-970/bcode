@@ -73,7 +73,9 @@ def _render_section(title: str, findings: list, sym: dict[str, str]) -> None:
 
 
 def _render_json(result: AuditResult) -> None:
-    print(json.dumps(dataclasses.asdict(result), indent=2, default=str))
+    data = dataclasses.asdict(result)
+    data["relevant_categories"] = sorted(result.relevant_categories)
+    print(json.dumps(data, indent=2, default=str))
 
 
 def render(result: AuditResult, output_json: bool = False) -> None:

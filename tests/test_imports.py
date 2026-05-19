@@ -1,6 +1,5 @@
 # tests/test_imports.py
 from pathlib import Path
-import pytest
 from bcode.detectors.imports import ImportsDetector
 from bcode.detectors.base import Severity
 from bcode.git import DiffResult, ChangedFile

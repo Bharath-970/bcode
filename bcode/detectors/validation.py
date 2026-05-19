@@ -17,8 +17,6 @@ RUNNERS: dict[str, list[str]] = {
     "build":     ["npm run build", "cargo build", "go build"],
 }
 
-FAILURE_INDICATORS = {"FAILED", "error:", "AssertionError", "ERROR"}
-
 _EXT_CATEGORIES: dict[str, set[str]] = {
     ".py":  {"test", "lint", "typecheck"},
     ".ts":  {"test", "lint", "typecheck", "build"},
@@ -45,7 +43,15 @@ def command_matches_runner(command: str, runner: str) -> bool:
 
 
 def _stdout_suggests_failure(stdout: str) -> bool:
-    return any(indicator in stdout for indicator in FAILURE_INDICATORS)
+    for line in stdout.splitlines():
+        ll = line.lower()
+        if "failed" in ll and "0 failed" not in ll:
+            return True
+        if "error:" in ll and "0 error" not in ll:
+            return True
+        if "assertionerror" in ll:
+            return True
+    return False
 
 
 class ValidationDetector:
@@ -65,18 +71,20 @@ class ValidationDetector:
         relevant = infer_relevant_categories(ctx.diff)
 
         for category in sorted(relevant):
-            if category == "typecheck" and not ctx.config.run_typecheck:
-                ran = any(
-                    command_matches_runner(cmd, runner)
-                    for cmd in (c.command for c in ctx.transcript.commands)
-                    for runner in RUNNERS["typecheck"]
-                )
-                if not ran:
-                    findings.append(Finding(
-                        detector=_DETECTOR,
-                        severity=Severity.INFO,
-                        message="typecheck not in session — run with --typecheck to verify",
-                    ))
+            if category == "typecheck":
+                if not ctx.config.run_typecheck:
+                    ran = any(
+                        command_matches_runner(cmd, runner)
+                        for cmd in (c.command for c in ctx.transcript.commands)
+                        for runner in RUNNERS["typecheck"]
+                    )
+                    if not ran:
+                        findings.append(Finding(
+                            detector=_DETECTOR,
+                            severity=Severity.INFO,
+                            message="typecheck not in session — run with --typecheck to verify",
+                        ))
+                # When run_typecheck=True, _run_typecheck_subprocess handles it below
                 continue
 
             category_runners = RUNNERS.get(category, [])

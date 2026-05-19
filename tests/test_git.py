@@ -1,6 +1,5 @@
 # tests/test_git.py
 from pathlib import Path
-import pytest
 from bcode.git import _parse_diff_text, DiffResult, ChangedFile
 
 FIXTURES = Path(__file__).parent / "fixtures" / "diffs"

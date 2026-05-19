@@ -1,4 +1,3 @@
-from io import StringIO
 from pathlib import Path
 import json
 import sys
@@ -74,3 +73,11 @@ def test_ascii_fallback_symbols():
     mock_stdout.encoding = "ascii"
     with patch("sys.stdout", mock_stdout):
         assert _supports_unicode() is False
+
+
+def test_json_relevant_categories_is_array(capsys):
+    render(_clean_result(), output_json=True)
+    out = capsys.readouterr().out
+    data = json.loads(out)
+    assert isinstance(data["relevant_categories"], list)
+    assert set(data["relevant_categories"]) == {"test", "lint"}

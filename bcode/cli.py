@@ -13,7 +13,7 @@ from bcode.transcript import load_transcript
 
 @click.command()
 @click.option("--task", "-t", required=True, help="Declared task description")
-@click.option("--commits", "-c", default=0, type=int,
+@click.option("--commits", "-c", default=0, type=click.IntRange(min=0),
               help="Audit last N commits (0 = unstaged diff)")
 @click.option("--typecheck", is_flag=True, default=False,
               help="Run mypy/pyright/tsc as subprocess on changed files")

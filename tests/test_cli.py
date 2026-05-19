@@ -2,7 +2,6 @@ from pathlib import Path
 import json
 import subprocess
 
-import pytest
 from click.testing import CliRunner
 
 from bcode.cli import audit

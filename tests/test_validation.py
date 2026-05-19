@@ -88,3 +88,14 @@ def test_typecheck_absent_is_info_when_flag_not_set():
     findings = ValidationDetector().run(ctx)
     info_findings = [f for f in findings if f.severity == Severity.INFO]
     assert any("--typecheck" in f.message for f in info_findings)
+
+
+def test_stdout_benign_output_no_warn():
+    commands = [
+        CommandRun("pytest tests/", "5 passed, 0 failed", 0.0),
+        CommandRun("ruff check .", "Found 0 errors.", 0.0),
+    ]
+    ctx = _py_ctx(commands)
+    findings = ValidationDetector().run(ctx)
+    warn_findings = [f for f in findings if f.severity == Severity.WARN]
+    assert warn_findings == []
